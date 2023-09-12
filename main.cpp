@@ -15,6 +15,8 @@
 #include <vector>
 #include <regex>
 #include <ranges>
+#include <numeric>
+#include <omp.h>
 
 std::vector<int> split(std::string &str)
 {
@@ -54,51 +56,65 @@ int main(int argv, char **argc)
     const int num_candy = input[1];
 
     auto candy_count = input | std::views::drop(2);
-    bool exact_count = false;
-    int home_count = 10001;
-    int home_idx = -1;
-    int home_sum = 0;
-    int cnt = 0;
-    int sum = 0;
-    int prev_sum = -1;
-
+    std::array<bool,4> exact_count{false};
+    std::array<int,4> home_count{10001};
+    std::array<int,4> home_idx{1};
+    std::array<int,4> home_sum{0};
+    std::array<int,4> cnt{0};
+    std::array<int,4> sum{0};
+    std::array<int,4> prev_sum{-1};
+    omp_set_dynamic(0);
+    omp_set_num_threads(4);
+    //#pragma omp parallel for
     for (int i=0; i<candy_count.size(); i++){
-        sum = 0;
+        int tidx = omp_get_thread_num();
+        int sum = 0;
         for (int j=i; j<candy_count.size(); j++){
             sum += candy_count[j];
             if (sum == num_candy){
-                if (!exact_count){
-                    exact_count = true;
-                    home_count = 10001;
-                    home_idx = -1;
-                    home_sum = 0;
+                if (!exact_count[tidx]){
+                    exact_count[tidx] = true;
+                    home_count[tidx] = 10001;
+                    home_idx[tidx] = -1;
+                    home_sum[tidx] = 0;
                 }
-                cnt++;
-                if (j - i < home_count){
-                    exact_count = true;
-                    home_count = j - (i);
-                    home_idx = i;
-                    home_sum = sum;
+                cnt[tidx]++;
+                if (j - i < home_count[tidx]){
+                    exact_count[tidx] = true;
+                    home_count[tidx] = j - (i);
+                    home_idx[tidx] = i;
+                    home_sum[tidx] = sum;
                 }
                 break;
             }
-            if (!exact_count && (sum < num_candy) && (sum > prev_sum))
+            if (!exact_count[tidx] && (sum < num_candy) && (sum > prev_sum[tidx]))
             {
-                prev_sum = sum;
-                home_count = j - (i);
-                home_idx = i;
-                home_sum = sum;                
+                prev_sum[tidx] = sum;
+                home_count[tidx] = j - (i);
+                home_idx[tidx] = i;
+                home_sum[tidx] = sum;                
             }
         }
     }
-    if (home_idx >= 0){
-        std::cout << "Start at home " << home_idx + 1;
-        std::cout << " and go to home " << home_idx + 1 + home_count;
-        std::cout << " getting " << home_sum << " pieces of candy" << std::endl;
+    
+
+    for (int i=0; i<4; i++){
+        std::cout << exact_count[i] << " " << home_idx[i] << " " << home_count[i] << " " << prev_sum[i] << std::endl;
+    }
+
+    bool single_exact = std::reduce(exact_count.begin(), exact_count.end()) > 0;
+    const auto [min, max] = std::minmax_element( prev_sum.begin(), prev_sum.end() );
+    const int min_index = std::distance(prev_sum.begin(), min);
+    const int max_index = std::distance(prev_sum.begin(), max);
+    
+    if (home_idx[max_index] >= 0){
+        std::cout << "Start at home " << home_idx[max_index] + 1;
+        std::cout << " and go to home " << home_idx[max_index] + 1 + home_count[max_index];
+        std::cout << " getting " << home_sum[max_index] << " pieces of candy" << std::endl;
     }
     else
         std::cout << "Don't go here." << std::endl;
 
-    return cnt;
+    return  std:: reduce(cnt.begin(),cnt.end());
     
 }
