@@ -55,6 +55,15 @@ int main(int argv, char **argc)
     const int max_homes = input[0];
     const int num_candy = input[1];
 
+    if (num_candy <= 0){
+        std::cout << "Don't go here." << std::endl;
+        return 0;
+    }
+    if (max_homes <= 0){
+        std::cout << "Don't go here." << std::endl;
+        return 0;
+    }
+
     auto candy_count = input | std::views::drop(2);
     std::array<bool,4> exact_count{false};
     std::array<int,4> home_count{10001};
@@ -65,7 +74,7 @@ int main(int argv, char **argc)
     std::array<int,4> prev_sum{-1};
     omp_set_dynamic(0);
     omp_set_num_threads(4);
-    //#pragma omp parallel for
+    #pragma omp parallel for
     for (int i=0; i<candy_count.size(); i++){
         int tidx = omp_get_thread_num();
         int sum = 0;
@@ -98,23 +107,48 @@ int main(int argv, char **argc)
     }
     
 
+    
     for (int i=0; i<4; i++){
-        std::cout << exact_count[i] << " " << home_idx[i] << " " << home_count[i] << " " << prev_sum[i] << std::endl;
+        std::cout << exact_count[i] << " " << home_idx[i] << " " << home_count[i] << " " << home_sum[i] << std::endl;
     }
 
     bool single_exact = std::reduce(exact_count.begin(), exact_count.end()) > 0;
-    const auto [min, max] = std::minmax_element( prev_sum.begin(), prev_sum.end() );
-    const int min_index = std::distance(prev_sum.begin(), min);
-    const int max_index = std::distance(prev_sum.begin(), max);
+    int index = -1;
+    // 1. Is there a perfect sum?
+    if (single_exact){
+        int min_homes = 1e6;
+        // 2. Which is the minimal number of homes?
+        for (int i=0; i<4; i++){
+            if (exact_count[i]){
+                if (min_homes > home_count[i]){
+                    min_homes = home_count[i];
+                    index = i;
+                }
+            }
+        }    
+    }
+    else{
+        // 3. If there isn't a perfect sum,
+        int max_sum = 0;
+        int min_homes = 1e6;
+        for (int i=0; i<4; i++){
+            // 4. which is the maximum sum?
+            if (max_sum < home_sum[i] && min_homes > home_count[i]){
+                max_sum = home_sum[i];
+                min_homes = home_count[i];
+                index = i;
+            }
+        }
+    }
     
-    if (home_idx[max_index] >= 0){
-        std::cout << "Start at home " << home_idx[max_index] + 1;
-        std::cout << " and go to home " << home_idx[max_index] + 1 + home_count[max_index];
-        std::cout << " getting " << home_sum[max_index] << " pieces of candy" << std::endl;
+    if (home_idx[index] >= 0 && home_sum[index] > 0){
+        std::cout << "Start at home " << home_idx[index] + 1;
+        std::cout << " and go to home " << home_idx[index] + 1 + home_count[index];
+        std::cout << " getting " << home_sum[index] << " pieces of candy" << std::endl;
     }
     else
         std::cout << "Don't go here." << std::endl;
 
-    return  std:: reduce(cnt.begin(),cnt.end());
+    return 0;
     
 }
