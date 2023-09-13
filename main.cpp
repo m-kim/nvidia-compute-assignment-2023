@@ -137,11 +137,6 @@ int main(int argv, char **argc)
     }
     
 
-    
-    for (int i=0; i<4; i++){
-        std::cout << exact_count[i] << " " << home_idx[i] << " " << home_count[i] << " " << home_sum[i] << std::endl;
-    }
-
     bool single_exact = std::reduce(exact_count.begin(), exact_count.end()) > 0;
     int index = -1;
     // 1. Is there a perfect sum?
