@@ -5,8 +5,14 @@
 // Output: A subset of homes in the input.txt that maximizes the amount of candy
 // without going over the limit set by the parents.
 // If there isn't a home/set of homes that can be found, print "Don't go here"
-// Compile instructions: g++ --std=c++20 main.cpp
-// std::views, which requires C++20.
+// Compile instructions: g++ -fopenmp --std=c++20 main.cpp
+// std::views, which requires C++20. 
+// 
+// Notes:
+// This was run on a Razer Blade 2020 with an Intel Core i7-10750h, 32GB of RAM 
+// and an RTX-2060 mobile GPU with 6GB of RAM on Windows 11 v22000.2295 
+// using Ubuntu 22.04 for WSL2.
+// g++ (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0
 ///////////////////////////////////////////////////////////////////////////////
 #include <iostream>
 #include <filesystem>
@@ -55,16 +61,22 @@ int main(int argv, char **argc)
     const int max_homes = input[0];
     const int num_candy = input[1];
 
-    if (num_candy <= 0){
+    if (num_candy < 0){
         std::cout << "Don't go here." << std::endl;
         return 0;
     }
-    if (max_homes <= 0){
+    if (max_homes < 0){
         std::cout << "Don't go here." << std::endl;
         return 0;
     }
 
     auto candy_count = input | std::views::drop(2);
+
+    if (max_homes != candy_count.size()){
+        std::cout << "Don't go here." << std::endl;
+        return 0;
+    }
+
     std::array<bool,4> exact_count{false};
     std::array<int,4> home_count{10001};
     std::array<int,4> home_idx{1};
@@ -72,6 +84,24 @@ int main(int argv, char **argc)
     std::array<int,4> cnt{0};
     std::array<int,4> sum{0};
     std::array<int,4> prev_sum{-1};
+    
+    //special case if number of candy is zero
+    if (num_candy == 0){
+        auto zero_home = std::find(candy_count.begin(), candy_count.end(), 0);
+        if (zero_home != std::end(candy_count)){
+            auto dist =  distance(candy_count.begin(), zero_home) + 1;
+            std::cout << "Start at home " << dist;
+            std::cout << " and go to home " << dist;
+            std::cout << " getting 0 pieces of candy" << std::endl;
+            return 0;
+        }
+        else{
+            std::cout << "Don't go here." << std::endl;
+            return 0;
+        }
+
+    }
+
     omp_set_dynamic(0);
     omp_set_num_threads(4);
     #pragma omp parallel for
